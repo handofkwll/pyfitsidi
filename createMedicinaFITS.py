@@ -14,7 +14,7 @@ Copyright (c) 2011 The University of Oxford. All rights reserved.
 """
 
 import sys, os, datetime, time
-import pyfits as pf, numpy as np,  tables as tb
+import astropy.io.fits as pf, numpy as np,  tables as tb
 import ephem
 
 # FITS IDI python module imports
@@ -495,34 +495,34 @@ def main():
   print('\nCreating PRIMARY HDU')
   print('------------------------------------')
   hdu = make_primary(config=configxml)
-  print hdu.header.ascardlist()
+  print repr(hdu.header)
   
   # Go through and generate required tables
   print('\nCreating ARRAY_GEOMETRY')
   print('------------------------------------')
   tbl_array_geometry = make_array_geometry(config=configxml, num_rows=32)
   tbl_array_geometry = config_array_geometry(tbl_array_geometry,array_geometry)
-  print tbl_array_geometry.header.ascardlist()
+  print repr(tbl_array_geometry.header)
   
   print('\nCreating FREQUENCY')
   print('------------------------------------')
   tbl_frequency = make_frequency(config=configxml, num_rows=1)
   tbl_frequency = config_frequency(tbl_frequency)
-  print tbl_frequency.header.ascardlist()
+  print repr(tbl_frequency.header)
   print('\n')
 
   print('\nCreating SOURCE')
   print('------------------------------------')
   tbl_source = make_source(config=configxml, num_rows=1)
   tbl_source = config_source(tbl_source, source)
-  print tbl_source.header.ascardlist()
+  print repr(tbl_source.header)
   print('\n')
 
   print('\nCreating ANTENNA')
   print('------------------------------------')
   tbl_antenna = make_antenna(config=configxml, num_rows=32)
   tbl_antenna = config_antenna(tbl_antenna)
-  print tbl_antenna.header.ascardlist()
+  print repr(tbl_antenna.header)
   print('\n')
 
   print('\nCreating UV_DATA')
@@ -543,7 +543,7 @@ def main():
   print('Now filling FITS file with data from HDF file...')
   # The config function is in a seperate file, so import it
   tbl_uv_data = config_uv_data(h5,tbl_uv_data, medicina, source)
-  print tbl_uv_data.header.ascardlist()
+  print repr(tbl_uv_data.header)
   print('\n')
 
   hdulist = pf.HDUList(
