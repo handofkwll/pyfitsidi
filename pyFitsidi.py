@@ -45,10 +45,10 @@ Module listing
 """
 
 import sys, os
-import pyfits as pf, numpy as np
+import astropy.io.fits as pf, numpy as np
 from lxml import etree
 
-def parseConfig(tagname, config='config.xml'):
+def parseConfig(tagname, config='config.xml', external_params={}):
   """ Finds tagname, in elementTree x, parses and returns dictionary of values
   This is a helper function, and is not usually called directly.
   
@@ -56,6 +56,11 @@ def parseConfig(tagname, config='config.xml'):
   -----
   This function uses eval() to evaluate the text string inside a child tag. As such,
   exercise caution! todo: block off certain modules to eval()
+
+  History
+  -------
+  26-Feb-2016. jfl. external_params was added to allow the calling Python 
+  to pass parameters into the parse of the XML config file.
   """
   
   xmlData = etree.parse(config) 
@@ -69,7 +74,7 @@ def parseConfig(tagname, config='config.xml'):
   vals = dict([ (child.tag, eval(child.text.strip())) for child in x.find(tagname).getchildren()])
   return vals
 
-def make_primary(config='config.xml'):
+def make_primary(config='config.xml', external_params={}):
   """  Creates the primary header data unit (HDU). 
   
   This function generates header keywords from the file headers/primary.tpl
@@ -78,25 +83,26 @@ def make_primary(config='config.xml'):
   ----------
   config: string
     filename of xml configuration file, defaults to 'config,xml'
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
   
   # Make a new blank FITS HDU
   hdu = pf.PrimaryHDU()
   
   # Generate headers from config file
-  params = parseConfig('PARAMETERS', config)
-  primary = parseConfig('PRIMARY', config)
-  common  = parseConfig('COMMON', config)
+  params = parseConfig('PARAMETERS', config, external_params)
+  primary = parseConfig('PRIMARY', config, external_params)
+  common  = parseConfig('COMMON', config, external_params)
   
-
-  for key in primary: hdu.header.update(key, primary[key])
-  for key in common: hdu.header.update(key, common[key])
+  for key in primary: hdu.header.set(key, primary[key])
+  for key in common: hdu.header.set(key, common[key])
   
   hdu.verify() # Will raise a warning if there's an issue  
   
   return hdu
 
-def make_array_geometry(config='config.xml', num_rows=1):
+def make_array_geometry(config='config.xml', num_rows=1, external_params={}):
   """Creates a vanilla ARRAY_GEOMETRY table HDU. 
   
   One row is required for each antenna in the array (num_rows)
@@ -120,12 +126,14 @@ def make_array_geometry(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
 
   # Generate headers from config file
-  params = parseConfig('PARAMETERS', config)
-  array_geometry = parseConfig('ARRAY_GEOMETRY', config)
-  common  = parseConfig('COMMON', config)
+  params = parseConfig('PARAMETERS', config, external_params)
+  array_geometry = parseConfig('ARRAY_GEOMETRY', config, external_params)
+  common  = parseConfig('COMMON', config, external_params)
   
   # Generate the columns for the table header
   c = []
@@ -157,16 +165,16 @@ def make_array_geometry(config='config.xml', num_rows=1):
     unit='METERS', array=np.zeros(num_rows,dtype='float32')))
 
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
 
 
 
-  for key in array_geometry: tblhdu.header.update(key, array_geometry[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in array_geometry: tblhdu.header.set(key, array_geometry[key])
+  for key in common: tblhdu.header.set(key, common[key])
   
   return tblhdu
     
-def make_antenna(config='config.xml', num_rows=1):
+def make_antenna(config='config.xml', num_rows=1, external_params={}):
   """  Creates a vanilla ANTENNA table HDU
   
   Notes
@@ -195,12 +203,14 @@ def make_antenna(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
 
   # Generate headers from config file
-  params = parseConfig('PARAMETERS', config)
-  cards  = parseConfig('ANTENNA', config)
-  common = parseConfig('COMMON', config)
+  params = parseConfig('PARAMETERS', config, external_params)
+  cards  = parseConfig('ANTENNA', config, external_params)
+  common = parseConfig('COMMON', config, external_params)
 
   nband = params['NBAND']
   npcal = params['NPCAL']
@@ -252,14 +262,14 @@ def make_antenna(config='config.xml', num_rows=1):
   #  array=np.zeros(32,dtype='float32')))
   
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
   
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
 
   return tblhdu
 
-def make_frequency(config='config.xml', num_rows=1):
+def make_frequency(config='config.xml', num_rows=1, external_params={}):
   """ Creates a vanilla FREQUENCY table HDU
   
   Notes
@@ -279,12 +289,14 @@ def make_frequency(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
 
   # Generate headers from config file
-  params = parseConfig('PARAMETERS', config)
-  cards = parseConfig('FREQUENCY', config)
-  common  = parseConfig('COMMON', config)
+  params = parseConfig('PARAMETERS', config, external_params)
+  cards = parseConfig('FREQUENCY', config, external_params)
+  common  = parseConfig('COMMON', config, external_params)
   
   nband = params['NBAND']
 
@@ -316,15 +328,15 @@ def make_frequency(config='config.xml', num_rows=1):
   #  array=np.zeros(num_rows,dtype='int32')))
   
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
   
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
   
   return tblhdu
   
 
-def make_source(config='config.xml', num_rows=1):
+def make_source(config='config.xml', num_rows=1, external_params={}):
   """ Creates a vanilla SOURCE table HDU
 
   Notes
@@ -361,12 +373,14 @@ config: string
   filename of xml configuration file, defaults to 'config,xml'
 num_rows: int
   number of rows to generate. Rows will be filled with numpy zeros.
+external_params: dict
+  dictionary containing items to be set in the config file
   """
 
   # Generate headers from config file
-  params = parseConfig('PARAMETERS', config)
-  cards  = parseConfig('SOURCE', config)
-  common = parseConfig('COMMON', config)
+  params = parseConfig('PARAMETERS', config, external_params)
+  cards  = parseConfig('SOURCE', config, external_params)
+  common = parseConfig('COMMON', config, external_params)
   
   nband = params['NBAND']
   so_format = '%iE'%nband
@@ -448,15 +462,15 @@ num_rows: int
    unit='ARCSEC', array=np.zeros(num_rows,dtype='float32')))
 
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
 
 
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
       
   return tblhdu
 
-def make_uv_data(config='config.xml', num_rows=1):
+def make_uv_data(config='config.xml', num_rows=1, external_params={}):
   """ Creates a vanilla UV_DATA table HDU
   
   Parameters
@@ -479,7 +493,7 @@ def make_uv_data(config='config.xml', num_rows=1):
   * SOURCE       Data source ID
   * FREQID       Data frequency setup ID
   * INTTIM       Data integration time
-  * WEIGHT       Data weights (one element for each freq channel)
+  * WEIGHT       Data weights (optional)
   * GATEID       VLBA gate ID
   * FLUX         UV visibility data matrix
   
@@ -489,14 +503,15 @@ def make_uv_data(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
-    
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
   c = []                
   
   # Generate headers from config file
-  params = parseConfig('PARAMETERS', config)
-  cards  = parseConfig('UV_DATA', config)
-  common = parseConfig('COMMON', config)
+  params = parseConfig('PARAMETERS', config, external_params)
+  cards  = parseConfig('UV_DATA', config, external_params)
+  common = parseConfig('COMMON', config, external_params)
 
 
                                           
@@ -527,31 +542,40 @@ def make_uv_data(config='config.xml', num_rows=1):
   c.append(pf.Column(name='INTTIM', format='1E',\
     unit='SECONDS', array=np.zeros(num_rows,dtype='float32')))
   
-  # The following depends on number of stokes, number of bands and number of channels
+  # The following depends on number of stokes, number of bands, number 
+  # of channels and number of items in each 'complex' visibility (could be
+  # 2 for real,imag or 3 for real,imag,weight)
   nchan   = params['NCHAN']
   nstokes = params['NSTOKES']
   nband   = params['NBAND']
+  ncomplex = params['NCOMPLEX']
   
-  nbits = nchan * nstokes * nband * 2 # 2= Real & Im
+  if ncomplex==2: 
+      nbits = nstokes * nband
+      format = '%iE'%nbits
+      dtype  = '%ifloat32'%nbits
+
+      c.append(pf.Column(name='WEIGHT', format=format,\
+        array=np.zeros(num_rows,dtype=dtype)))
+
+  nbits = nchan * nstokes * nband * ncomplex
   format = '%iE'%nbits
   dtype  = '%ifloat32'%nbits
-  
-  c.append(pf.Column(name='WEIGHT', format=format,\
-    array=np.zeros(num_rows,dtype=dtype)))
-    
+      
   c.append(pf.Column(name='FLUX', format=format,\
     unit='UNCALIB', array=np.zeros(num_rows,dtype=dtype)))  
   
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
 
-  for key in sorted(common): tblhdu.header.update(key, common[key])
-  for key in sorted(cards): tblhdu.header.update(key, cards[key])
+  for key in sorted(common): tblhdu.header.set(key, common[key])
+  for key in sorted(cards): tblhdu.header.set(key, cards[key])
 
         
   return tblhdu
 
-def make_interferometer_model(config='config.xml', num_rows=1):
+def make_interferometer_model(config='config.xml', num_rows=1,
+  external_params={}):
   """
   Creates a vanilla INTERFEROMETER_MODEL table HDU.
 
@@ -583,6 +607,8 @@ def make_interferometer_model(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
     
   """
 
@@ -636,14 +662,15 @@ def make_interferometer_model(config='config.xml', num_rows=1):
    unit='SEC/SEC', array=np.zeros(num_rows,dtype='float32')))
 
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
 
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
        
   return tblhdu      
                                     
-def make_system_temperature(config='config.xml', num_rows=1):
+def make_system_temperature(config='config.xml', num_rows=1,
+  external_params={}):
   """ Creates a vanilla SYSTEM_TEMPERATURE table HDU
   
   Notes
@@ -668,6 +695,8 @@ def make_system_temperature(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
 
   # Generate headers from config file
@@ -702,14 +731,14 @@ def make_system_temperature(config='config.xml', num_rows=1):
    unit='KELVIN', array=np.zeros(num_rows,dtype='int32')))
 
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
 
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
   
   return tblhdu   
 
-def make_gain_curve(config='config.xml', num_rows=1):
+def make_gain_curve(config='config.xml', num_rows=1, external_params={}):
   """ Creates a vanilla GAIN_CURVE table HDU
     
   Notes
@@ -737,6 +766,8 @@ def make_gain_curve(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
     
   """
 
@@ -781,14 +812,14 @@ def make_gain_curve(config='config.xml', num_rows=1):
    unit='K/JY', array=np.zeros(num_rows,dtype='float32')))
   
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
 
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
 
   return tblhdu
 
-def make_phase_cal(config='config.xml', num_rows=1):
+def make_phase_cal(config='config.xml', num_rows=1, external_params={}):
   """ Creates a vanilla PHASE-CAL table HDU
 
 
@@ -817,6 +848,8 @@ def make_phase_cal(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
     
   """
   # Generate headers from config file
@@ -863,15 +896,15 @@ def make_phase_cal(config='config.xml', num_rows=1):
    unit='SEC/SEC', array=np.zeros(num_rows,dtype='int32')))
 
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
 
 
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
     
   return tblhdu
 
-def make_flag(config='config.xml', num_rows=1):
+def make_flag(config='config.xml', num_rows=1, external_params={}):
   """ Creates a vanilla FLAG table HDU
   
 
@@ -898,6 +931,8 @@ def make_flag(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
 
   # Generate headers from config file
@@ -938,15 +973,15 @@ def make_flag(config='config.xml', num_rows=1):
     array=np.zeros(num_rows,dtype='int32')))
 
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
   
 
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
     
   return tblhdu
 
-def make_bandpass(config='config.xml', num_rows=1):
+def make_bandpass(config='config.xml', num_rows=1, external_params={}):
   """ Creates a vanilla BANDPASS table HDU
   
   Notes
@@ -971,6 +1006,8 @@ def make_bandpass(config='config.xml', num_rows=1):
     filename of xml configuration file, defaults to 'config,xml'
   num_rows: int
     number of rows to generate. Rows will be filled with numpy zeros.
+  external_params: dict
+    dictionary containing items to be set in the config file
   """
 
   # Generate headers from config file
@@ -1015,11 +1052,11 @@ def make_bandpass(config='config.xml', num_rows=1):
     array=np.zeros(num_rows,dtype='1024float32')))
   
   coldefs = pf.ColDefs(c)
-  tblhdu = pf.new_table(coldefs)
+  tblhdu = pf.BinTableHDU.from_columns(coldefs)
   
 
-  for key in cards: tblhdu.header.update(key, cards[key])
-  for key in common: tblhdu.header.update(key, common[key])
+  for key in cards: tblhdu.header.set(key, cards[key])
+  for key in common: tblhdu.header.set(key, common[key])
     
   return tblhdu  
 
